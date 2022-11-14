@@ -1,5 +1,7 @@
 # nonestrap
 
+[中文文档在这里～](./README_CN.md)
+
 Another NoneBot2 project bootstrap tool.
 
 ## Installation
