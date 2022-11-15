@@ -121,7 +121,7 @@ def main(target: str, packages: List[str], adapters: List[str], env: str, embed_
         print("[NOTICE] Creating entry file for the bot...")
         botpy = tp / "bot.py"
         with open(botpy, "w") as f:
-            f.write(BOT_PY_T.format(EMBED_CD=f"__import__('os').chdir({str(tp)})" if embed else "", ADAPTER_LOAD=adapter_t))
+            f.write(BOT_PY_T.format(EMBED_CD=f"__import__('os').chdir({str(tp)!r})" if embed else "", ADAPTER_LOAD=adapter_t))
         py_compile.compile(str(botpy), cfile=str(tp / "bot.pyc"))
         os.remove(botpy)
     print("[NOTICE] Generating misc files...")
