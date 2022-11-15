@@ -23,6 +23,12 @@ nonestrap -a onebot-v11 -a ding mybot nonebot-plugin-apscheduler
 nonestrap -a onebot-v11 -e prod mybot
 
 # 与第一个相同，但不创建新的虚拟环境。
-# 如果您已经准备了虚拟环境，请使用它。
+# 如果您已经准备了虚拟环境，请使用这个。
 nonestrap -a onebot-v11 -V mybot
+
+# 如果您想给嵌入式 Python 使用 nonestrap，请使用这个。
+# 在此之前请先将 pip 和 setuptools 安装到 Lib/site-packages，
+# 并且修改 pth 导入控制文件。
+pip install -t Lib/site-packages pip setuptools
+nonestrap -a onebot-v11 -VE python.exe mybot
 ```
