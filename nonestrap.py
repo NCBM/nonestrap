@@ -1,6 +1,7 @@
 from argparse import ArgumentParser
 import os
 from pathlib import Path
+import pip._internal.main as pip_main
 import py_compile
 from shutil import SameFileError
 import subprocess
@@ -23,7 +24,7 @@ driver = nonebot.get_driver()
 
 {ADAPTER_LOAD}
 
-nonebot.load_from_toml("{EMBED_DIR}/pyproject.toml")
+nonebot.load_from_toml("pyproject.toml")
 
 if __name__ == "__main__":
     nonebot.run(app="__mp_main__:app")
@@ -66,22 +67,15 @@ def venvinstall(vp: Path, package: str):
 
 
 def directinstall(_: Path, package: str):
-    subprocess.run(["python", "-m", "pip", "install", "-U", package])
+    pip_main.main(["pip", "install", "-U", package])
 
 
-def embedinstall(ep: Path, package: str):
-    exc = (ep, )
-    if sys.platform != "win32":
-        print("[WARNING] Detected you are not using a win32 environment, attempting to use wine.")
-        exc = ("wine", ep)
-    arg = "-m", "pip", "install", "-U", package
-    subprocess.run([*exc, *arg])
-
-
-def main(target: str, packages: List[str], adapters: List[str], env: str, embed_path: str, _venv: bool):
+def main(
+    target: str, packages: List[str], adapters: List[str], env: str,
+    _compile: bool, _venv: bool
+):
     tp = Path(target)
     tp.mkdir(exist_ok=True)
-    embed = False
     if _venv:
         venv_path = tp / ".venv"
         try:
@@ -89,13 +83,13 @@ def main(target: str, packages: List[str], adapters: List[str], env: str, embed_
             createvenv(venv_path)
             print("[NOTICE] Successfully created a new virtual environment.")
         except SameFileError:
-            print("[NOTICE] Virtual environment already exists. Delete .venv manually if you don't need it.")
+            print(
+                "[NOTICE] Virtual environment already exists. "
+                "Delete .venv manually if you don't need it "
+                "or the environment is broken."
+            )
         install_dir = venv_path
         install = venvinstall
-    elif embed_path:
-        embed = True
-        install_dir = Path(embed_path)
-        install = embedinstall
     else:
         install_dir = Path()  # stub
         install = directinstall
@@ -120,9 +114,10 @@ def main(target: str, packages: List[str], adapters: List[str], env: str, embed_
         print("[NOTICE] Creating entry file for the bot...")
         botpy = tp / "bot.py"
         with open(botpy, "w") as f:
-            f.write(BOT_PY_T.format(EMBED_DIR=str(tp) if embed else ".", ADAPTER_LOAD=adapter_t))
-        py_compile.compile(str(botpy), cfile=str(tp / "bot.pyc"))
-        os.remove(botpy)
+            f.write(BOT_PY_T.format(ADAPTER_LOAD=adapter_t))
+        if _compile:
+            py_compile.compile(str(botpy), cfile=str(tp / "bot.pyc"))
+            os.remove(botpy)
     print("[NOTICE] Generating misc files...")
     with open(tp / ".env", "w") as f:
         f.write(DOTENV_DEV if env == "dev" else DOTENV_PROD)
@@ -144,16 +139,33 @@ def main(target: str, packages: List[str], adapters: List[str], env: str, embed_
 
 
 def _entry():
-    ap = ArgumentParser("nonestrap", description="NoneBot2 bootstrap file generating tool")
-    ap.add_argument("-a", "--adapter", action="append", choices=ADAPTERS_L, help="specify adapter to register")
-    ap.add_argument("-e", "--dotenv", choices=("dev", "prod"), default="dev", help="choose .env style")
-    ap.add_argument("-E", "--embed", default="", help="use embedded python instead of system python, works with -V. path to python is required")
-    ap.add_argument("-V", "--no-venv", "--in-venv", action="store_false", help="whether not to use venv")
+    ap = ArgumentParser(
+        "nonestrap", description="NoneBot2 bootstrap file generating tool"
+    )
+    ap.add_argument(
+        "-a", "--adapter", action="append", choices=ADAPTERS_L,
+        help="specify adapter to register"
+    )
+    ap.add_argument(
+        "-e", "--dotenv", choices=("dev", "prod"), default="dev",
+        help="choose .env style"
+    )
+    ap.add_argument(
+        "-C", "--no-compile", action="store_false",
+        help="whether not to compile bot.py"
+    )
+    ap.add_argument(
+        "-V", "--no-venv", "--in-venv", action="store_false",
+        help="whether not to use venv"
+    )
     ap.add_argument("target", help="specify bootstrap target directory")
     ap.add_argument("package", nargs="*", help="install specified packages")
     args = ap.parse_args()
     # print(args)
-    main(args.target, args.package, args.adapter, args.dotenv, args.embed, args.no_venv)
+    main(
+        args.target, args.package, args.adapter, args.dotenv, args.no_compile,
+        args.no_venv
+    )
 
 
 if __name__ == "__main__":
